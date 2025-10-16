@@ -29,4 +29,26 @@ async function createUser(req, res) {
   }
 }
 
-module.exports = { getUsers, createUser };
+// PUT: cập nhật user
+async function updateUser(req, res) {
+  const { id } = req.params;
+  const idx = users.findIndex((u) => u.id == id);
+  if (idx === -1) return res.status(404).json({ message: "User not found" });
+
+  // Gộp giữ nguyên id
+  users[idx] = { ...users[idx], ...req.body, id: users[idx].id };
+  res.json(users[idx]);
+}
+
+// DELETE: xóa user
+async function deleteUser(req, res) {
+  const { id } = req.params;
+  const before = users.length;
+  users = users.filter((u) => u.id != id);
+  if (users.length === before) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  res.json({ message: "User deleted" });
+}
+
+module.exports = { getUsers, createUser, updateUser, deleteUser };
