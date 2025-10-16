@@ -1,6 +1,6 @@
 {
   // VS Code tasks to run the whole project
-  "$schema": "https://json.schemastore.org/tasks.json",
+  "$schema": "vscode://schemas/tasks",
   "version": "2.0.0",
   "tasks": [
     {
