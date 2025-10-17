@@ -11,6 +11,21 @@ async function getUsers(req, res) {
   }
 }
 
+// GET /users/:id - lấy 1 user theo id
+async function getUser(req, res) {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    console.error("getUser error:", err);
+    if (err.name === "CastError")
+      return res.status(400).json({ message: "Invalid user id" });
+    res.status(500).json({ message: "Failed to fetch user" });
+  }
+}
+
 // POST /users
 async function createUser(req, res) {
   try {
@@ -44,7 +59,8 @@ async function updateUser(req, res) {
     res.json(user);
   } catch (err) {
     console.error("updateUser error:", err);
-    if (err.name === "CastError") return res.status(400).json({ message: "Invalid user id" });
+    if (err.name === "CastError")
+      return res.status(400).json({ message: "Invalid user id" });
     res.status(500).json({ message: "Failed to update user" });
   }
 }
@@ -58,9 +74,10 @@ async function deleteUser(req, res) {
     res.json({ message: "User deleted" });
   } catch (err) {
     console.error("deleteUser error:", err);
-    if (err.name === "CastError") return res.status(400).json({ message: "Invalid user id" });
+    if (err.name === "CastError")
+      return res.status(400).json({ message: "Invalid user id" });
     res.status(500).json({ message: "Failed to delete user" });
   }
 }
 
-module.exports = { getUsers, createUser, updateUser, deleteUser };
+module.exports = { getUsers, getUser, createUser, updateUser, deleteUser };
