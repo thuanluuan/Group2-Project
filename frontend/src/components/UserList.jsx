@@ -4,7 +4,7 @@ import axios from "axios";
 // base API URL: use REACT_APP_API_URL when provided (e.g. http://192.168.x.y:3000)
 const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
 
-export default function UserList() {
+export default function UserList({ onEdit }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +29,21 @@ export default function UserList() {
     };
   }, []);
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn có chắc muốn xóa user này?")) return;
+    try {
+      await axios.delete(`${API_BASE}/users/${id}`);
+      setUsers(users.filter(user => user._id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Xóa user thất bại");
+    }
+  };
+
+  const handleEdit = (user) => {
+    onEdit?.(user);
+  };
+
   if (loading) return <p className="loading">Đang tải...</p>;
   if (!users.length)
     return <div className="empty">Chưa có user nào. Hãy thêm mới ở khung bên cạnh.</div>;
@@ -42,6 +57,10 @@ export default function UserList() {
           <div>
             <div style={{ fontWeight: 600 }}>{u.name}</div>
             <div className="meta">{u.email}</div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <button onClick={() => handleEdit(u)} className="button button--small">Sửa</button>
+            <button onClick={() => handleDelete(u._id)} className="button button--small button--danger">Xóa</button>
           </div>
         </li>
       ))}
