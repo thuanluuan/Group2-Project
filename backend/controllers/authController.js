@@ -65,11 +65,33 @@ async function me(req, res) {
   try {
     const user = await AuthUser.findById(req.user?.sub, { password: 0 }).lean();
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role });
+  res.json({ _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role, address: user.address, phone: user.phone, avatarUrl: user.avatarUrl });
   } catch (err) {
     console.error("me error:", err);
     res.status(500).json({ message: "Failed to load profile" });
   }
 }
 
-module.exports = { register, login, logout, me };
+async function updateMe(req, res) {
+  try {
+  const { name, dob, address, phone, avatarUrl } = req.body;
+  const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (dob !== undefined) updates.dob = dob;
+  if (address !== undefined) updates.address = address;
+  if (phone !== undefined) updates.phone = phone;
+  if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+    const user = await AuthUser.findByIdAndUpdate(req.user?.sub, updates, {
+      new: true,
+      runValidators: true,
+      projection: { password: 0 },
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+  res.json({ _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role, address: user.address, phone: user.phone, avatarUrl: user.avatarUrl });
+  } catch (err) {
+    console.error("updateMe error:", err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+}
+
+module.exports = { register, login, logout, me, updateMe };
