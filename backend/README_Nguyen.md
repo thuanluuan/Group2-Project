@@ -1,19 +1,91 @@
-# Vai trò Backend - Nguyen
+# Backend (Node.js + Express)
 
-- Tech: Node.js + Express
-- Nhiệm vụ: API, routes, middleware, auth
+- Tech: Node.js, Express, Mongoose, dotenv, cors
+- Chức năng: REST API quản lý người dùng (GET/POST/PUT/DELETE)
 
-## Thiết lập môi trường cục bộ
+## Yêu cầu môi trường
 
-1. Cài đặt dependencies trong 'backend/': `npm install`
-2. Tạo file `.env` trong thư mục `backend/` dựa trên mẫu `backend/.env`
-   Nội dung file '.env':
-   "PORT=3000
-   MONGODB_URI="mongodb+srv://group2user:abc12345@cluster0.oy7mfyg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-   DB_NAME=groupDB
-   cd D:\CNTT\4\HK1\PTPMNM\test\Group2-Project\backend
-   npm run start"
-3. Điền các giá trị thực tế cho biến môi trường (URI MongoDB, tên database, cổng chạy server)
-4. Khởi động server: `npm start`
+- Windows + PowerShell
+- Node.js (bao gồm npm)
 
-> Lưu ý: Không commit file `.env` thật lên Git để tránh lộ thông tin nhạy cảm.
+### Cài Node.js (kèm npm)
+
+Bạn có thể chọn 1 trong 2 cách:
+
+1) Dùng winget (khuyến nghị)
+
+- Mở PowerShell Run as Administrator
+- Cài Node LTS:
+
+   ```powershell
+   winget install OpenJS.NodeJS.LTS
+   ```
+
+- Đóng PowerShell, mở lại PowerShell mới và kiểm tra:
+
+   ```powershell
+   node -v
+   npm -v
+   ```
+
+2) Dùng bộ cài từ trang chủ
+
+- Tải bản LTS từ: https://nodejs.org/en/download
+- Cài đặt và giữ tuỳ chọn “Add to PATH”
+- Mở PowerShell mới và kiểm tra `node -v`, `npm -v`
+
+Nếu `node`/`npm` không được nhận diện, kiểm tra PATH có chứa `C:\Program Files\nodejs\` chưa. Cách nhanh để dùng tạm trong phiên hiện tại:
+
+```powershell
+$env:Path = "C:\Program Files\nodejs;" + $env:Path
+```
+
+Để sửa PATH vĩnh viễn, dùng “Edit the system environment variables” trong Windows và thêm `C:\Program Files\nodejs\` vào PATH của User/System.
+
+## Thiết lập dự án Backend
+
+1) Cài dependencies
+
+```powershell
+cd 'D:\CNTT\4\HK1\PTPMNM\Git\TH_Nhom\Group2-Project\backend'
+npm install
+```
+
+2) Tạo file `.env` (chỉ chứa KEY=VALUE, không chứa lệnh shell)
+
+Ví dụ mẫu:
+
+```
+PORT=3000
+MONGODB_URI="mongodb+srv://group2user:abc12345@cluster0.oy7mfyg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+DB_NAME=groupDB
+
+```
+
+3) Chạy server
+
+```powershell
+npm run dev   # chạy với nodemon (tự reload)
+# hoặc
+npm start     # chạy bình thường
+```
+
+Mặc định API sẽ chạy tại: http://localhost:3000
+
+## Các endpoint chính
+
+- GET    `/users`          — lấy danh sách user
+- POST   `/users`          — tạo user (body: { name, email })
+- PUT    `/users/:id`      — cập nhật user
+- DELETE `/users/:id`      — xoá user
+
+## Troubleshooting
+
+- npm/node không được nhận diện: cài Node LTS và kiểm tra PATH như hướng dẫn ở trên.
+- Lỗi kết nối MongoDB: kiểm tra `MONGODB_URI`, `DB_NAME`, whitelist IP trên MongoDB Atlas.
+- Port bận: đổi biến `PORT` trong `.env` sang cổng khác (ví dụ 3001).
+
+## Bảo mật
+
+- Không commit `.env` thật (đã có trong `.gitignore`).
+- Nếu đã từng lộ credentials, hãy rotate mật khẩu/user trên MongoDB Atlas.
