@@ -1,0 +1,34 @@
+{
+  // VS Code tasks to run the whole project
+  "$schema": "vscode://schemas/tasks",
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Backend: dev",
+      "type": "shell",
+      "command": "$env:Path = 'C:\\Program Files\\nodejs;' + $env:Path; cd 'D:\\CNTT\\4\\HK1\\PTPMNM\\Git\\TH_Nhom\\Group2-Project\\backend'; npm run dev",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: start",
+      "type": "shell",
+      "command": "$env:Path = 'C:\\Program Files\\nodejs;' + $env:Path; cd 'D:\\CNTT\\4\\HK1\\PTPMNM\\Git\\TH_Nhom\\Group2-Project\\frontend'; npm start",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start: full stack",
+      "type": "shell",
+      "command": "echo Starting backend + frontend...",
+      "dependsOn": [
+        "Backend: dev",
+        "Frontend: start"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}
