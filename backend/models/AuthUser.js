@@ -15,6 +15,9 @@ const authUserSchema = new mongoose.Schema(
     dob: { type: Date, required: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     password: { type: String, required: true, minlength: 6 },
+  address: { type: String, trim: true, maxlength: 200 },
+  phone: { type: String, trim: true, maxlength: 20 },
+  avatarUrl: { type: String, trim: true },
   },
   { timestamps: true }
 );

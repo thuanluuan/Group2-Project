@@ -29,11 +29,14 @@ async function getAuthUser(req, res) {
 async function updateAuthUser(req, res) {
   try {
     const { id } = req.params;
-  const { name, email, dob, role } = req.body;
+  const { name, email, dob, role, address, phone, avatarUrl } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (email !== undefined) updates.email = email;
-    if (dob !== undefined) updates.dob = dob;
+  if (dob !== undefined) updates.dob = dob;
+  if (address !== undefined) updates.address = address;
+  if (phone !== undefined) updates.phone = phone;
+  if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
     if (role !== undefined) {
       // Prevent creating a second admin
       if (role === "admin") {
@@ -60,6 +63,12 @@ async function updateAuthUser(req, res) {
 async function deleteAuthUser(req, res) {
   try {
     const { id } = req.params;
+    // Prevent deleting the sole admin account for safety
+    const toDelete = await AuthUser.findById(id).lean();
+    if (!toDelete) return res.status(404).json({ message: "Auth user not found" });
+    if (toDelete.role === 'admin') {
+      return res.status(403).json({ message: 'Không thể xóa tài khoản admin' });
+    }
     const user = await AuthUser.findByIdAndDelete(id);
     if (!user) return res.status(404).json({ message: "Auth user not found" });
     res.json({ message: "Auth user deleted" });
