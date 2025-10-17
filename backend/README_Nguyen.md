@@ -57,8 +57,9 @@ Ví dụ mẫu:
 
 ```
 PORT=3000
-MONGODB_URI="mongodb+srv://<user>:<pass>@<cluster-url>/?retryWrites=true&w=majority&appName=Cluster0"
+MONGODB_URI="mongodb+srv://group2user:abc12345@cluster0.oy7mfyg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 DB_NAME=groupDB
+
 ```
 
 3) Chạy server
