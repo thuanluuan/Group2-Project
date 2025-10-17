@@ -31,24 +31,36 @@ async function createUser(req, res) {
 
 // PUT: cập nhật user
 async function updateUser(req, res) {
-  const { id } = req.params;
-  const idx = users.findIndex((u) => u.id == id);
-  if (idx === -1) return res.status(404).json({ message: "User not found" });
+  try {
+    const { id } = req.params;
+    const updates = req.body;
 
-  // Gộp giữ nguyên id
-  users[idx] = { ...users[idx], ...req.body, id: users[idx].id };
-  res.json(users[idx]);
+    const user = await User.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    console.error("updateUser error:", err);
+    if (err.name === "CastError") return res.status(400).json({ message: "Invalid user id" });
+    res.status(500).json({ message: "Failed to update user" });
+  }
 }
 
 // DELETE: xóa user
 async function deleteUser(req, res) {
-  const { id } = req.params;
-  const before = users.length;
-  users = users.filter((u) => u.id != id);
-  if (users.length === before) {
-    return res.status(404).json({ message: "User not found" });
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    console.error("deleteUser error:", err);
+    if (err.name === "CastError") return res.status(400).json({ message: "Invalid user id" });
+    res.status(500).json({ message: "Failed to delete user" });
   }
-  res.json({ message: "User deleted" });
 }
 
 module.exports = { getUsers, createUser, updateUser, deleteUser };
