@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import api from "./lib/api";
 import UserList from "./components/UserList";
 import AddUser from "./components/AddUser";
+import ProfileView from "./components/ProfileView";
+import ProfileForm from "./components/ProfileForm";
+import AdminUserList from "./components/AdminUserList";
+import HoverMenu from "./components/HoverMenu";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import AuthHeader from "./components/AuthHeader";
@@ -17,6 +21,10 @@ export default function App() {
     }
   });
   const [view, setView] = useState(user ? "app" : "login"); // 'app' | 'login' | 'register'
+  const [selectedUser, setSelectedUser] = useState(null); // for admin viewing others
+  const [mode, setMode] = useState('profile'); // 'profile' | 'profile-edit'
+  const [editTarget, setEditTarget] = useState('self'); // 'self' | 'selected'
+  const [listRefreshKey, setListRefreshKey] = useState(0);
 
   useEffect(() => {
     if (user) setView("app");
@@ -58,9 +66,16 @@ export default function App() {
   return (
     <div className="container">
       <header className="header">
-        <h1>Users App</h1>
-        <span className="badge">MongoDB + Express + React</span>
+        <h1>User Portal</h1>
+        <span className="badge">MongoDB · Express · React</span>
       </header>
+      {user && (
+        <HoverMenu 
+          user={user} 
+          onLogout={handleLogout} 
+          onEditProfile={() => { setEditTarget('self'); setMode('profile-edit'); }}
+        />
+      )}
 
       <div style={{ marginTop: 16 }}>
         {!user && (
@@ -89,33 +104,109 @@ export default function App() {
           </div>
         )}
 
-        {user && user.role === 'admin' && (
+        {user && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-              <AuthHeader user={user} onLogout={handleLogout} />
-            </div>
+            {/* Removed inline user header for cleaner look as requested */}
 
-            <div className="grid">
-              <section className="card">
-                <div className="card__header">{editUser ? "Sửa User" : "Thêm User"}</div>
-                <div className="card__body">
-                  {editUser ? (
-                    <AddUser onAdded={handleAdded} editUser={editUser} onCancelEdit={handleCancelEdit} />
-                  ) : (
-                    <div className="empty">Để tạo tài khoản mới, vui lòng dùng mục Đăng ký ở màn hình đăng nhập.</div>
-                  )}
-                </div>
-              </section>
-
-              {user?.role === 'admin' && (
-                <section className="card">
-                  <div className="card__header">Danh sách Users</div>
-                  <div className="card__body">
-                    <UserList key={reloadKey} onEdit={handleEdit} />
+            {/* Profile area for all users */}
+            {user.role !== 'admin' && (
+              <div className="grid" style={{ gridTemplateColumns: '1fr' }}>
+                {mode === 'profile' ? (
+                  <div className="card">
+                    <div className="card__header">Hồ sơ của tôi</div>
+                    <div className="card__body">
+                      <ProfileView user={user} />
+                      <div className="empty" style={{ marginTop: 12 }}>Để cập nhật thông tin, mở menu bên phải và chọn "Cập nhật thông tin"</div>
+                    </div>
                   </div>
-                </section>
-              )}
-            </div>
+                ) : (
+                  <div className="card">
+                    <div className="card__header">Cập nhật thông tin cá nhân</div>
+                    <div className="card__body">
+                      <ProfileForm initialUser={user} onSaved={async () => {
+                        try {
+                          const res = await api.get('/auth/me');
+                          setUser(res.data);
+                        } catch {}
+                        setMode('profile');
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {user.role === 'admin' && (
+              <div className="grid" style={{ gridTemplateColumns: '0.9fr 1.1fr' }}>
+                <div>
+                  <div className="card" style={{ marginBottom: 16 }}>
+                    <div className="card__body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div className="badge">Quản trị</div>
+                      <button className="button button--ghost" onClick={() => { setEditTarget('self'); setMode('profile'); }}>Hồ sơ của tôi</button>
+                    </div>
+                  </div>
+                  <AdminUserList refreshKey={listRefreshKey} onSelect={(u) => { setSelectedUser(u); setEditTarget('selected'); setMode('profile'); }} />
+                </div>
+                <div className="card">
+                  <div className="card__header">{editTarget === 'self' ? `Hồ sơ: ${user.name}` : (selectedUser ? `Hồ sơ: ${selectedUser.name}` : 'Hồ sơ')}</div>
+                  <div className="card__body">
+                    {editTarget === 'self' ? (
+                      mode === 'profile' ? (
+                        <>
+                          <ProfileView user={user} />
+                          <div className="row" style={{ marginTop: 12 }}>
+                            <button className="button" onClick={() => setMode('profile-edit')}>Sửa thông tin</button>
+                          </div>
+                        </>
+                      ) : (
+                        <ProfileForm initialUser={user} onSaved={async () => {
+                          try {
+                            const res = await api.get('/auth/me');
+                            setUser(res.data);
+                          } catch {}
+                          setMode('profile');
+                        }} />
+                      )
+                    ) : (
+                      !selectedUser ? (
+                        <div className="empty">Chọn một tài khoản ở danh sách để xem/cập nhật</div>
+                      ) : (
+                        mode === 'profile' ? (
+                          <>
+                            <ProfileView user={selectedUser} />
+                            <div className="row" style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                              <button className="button" onClick={() => setMode('profile-edit')}>Sửa thông tin</button>
+                              {selectedUser?.role !== 'admin' && (
+                                <button className="button button--danger" onClick={async () => {
+                                  if (!selectedUser) return;
+                                  const ok = window.confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`);
+                                  if (!ok) return;
+                                  try {
+                                    await api.delete(`/users/${selectedUser._id}`);
+                                    setSelectedUser(null);
+                                    setListRefreshKey(k => k + 1);
+                                  } catch (e) {
+                                    alert(e?.response?.data?.message || 'Xóa thất bại');
+                                  }
+                                }}>Xóa người dùng</button>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <ProfileForm initialUser={selectedUser} isAdminEditing userId={selectedUser._id} onSaved={async () => {
+                            try {
+                              const res = await api.get(`/users/${selectedUser._id}`);
+                              setSelectedUser(res.data);
+                            } catch {}
+                            setMode('profile');
+                          }} />
+                        )
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
   )}
       </div>
