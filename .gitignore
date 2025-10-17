@@ -1,0 +1,13 @@
+# Node
+node_modules/
+**/node_modules/
+**/.cache/
+npm-debug.log*
+
+# Env
+.env
+**/.env
+
+# OS / Editor
+.DS_Store
+Thumbs.db
