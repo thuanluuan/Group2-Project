@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../lib/api";
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
 
@@ -24,10 +24,10 @@ export default function AddUser({ onAdded, editUser, onCancelEdit }) {
     try {
       if (editUser) {
         // Update existing user
-        await axios.put(`${API_BASE}/users/${editUser._id}`, form);
+        await api.put(`/users/${editUser._id}`, form);
       } else {
         // Add new user
-        await axios.post(`${API_BASE}/users`, form);
+        await api.post(`/users`, form);
       }
       onAdded?.();
       setForm({ name: "", email: "" });
