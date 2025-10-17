@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-// base API URL: use REACT_APP_API_URL when provided (e.g. http://192.168.x.y:3000)
-const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
+import api from "../lib/api";
 
 export default function UserList({ onEdit }) {
   const [users, setUsers] = useState([]);
@@ -12,7 +11,7 @@ export default function UserList({ onEdit }) {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/users`);
+        const res = await api.get(`/users`);
         if (!cancelled) setUsers(res.data || []);
       } catch (err) {
         console.error(err);
@@ -32,7 +31,7 @@ export default function UserList({ onEdit }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa user này?")) return;
     try {
-      await axios.delete(`${API_BASE}/users/${id}`);
+  await api.delete(`/users/${id}`);
       setUsers(users.filter(user => user._id !== id));
     } catch (err) {
       console.error(err);
