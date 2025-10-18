@@ -9,6 +9,8 @@ import HoverMenu from "./components/HoverMenu";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import AuthHeader from "./components/AuthHeader";
+import { useToast } from "./components/Toast";
+import { useConfirm } from "./components/ConfirmDialog";
 
 export default function App() {
   const [reloadKey, setReloadKey] = useState(0);
@@ -58,6 +60,20 @@ export default function App() {
     setView("login");
   };
 
+  const toast = useToast?.() || null;
+  const confirm = useConfirm?.();
+  const handleDeleteSelf = async () => {
+  const ok = await (confirm ? confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.") : Promise.resolve(window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.")));
+    if (!ok) return;
+    try {
+      await api.delete('/auth/me');
+      toast?.success?.('Đã xóa tài khoản');
+      handleLogout();
+    } catch (e) {
+      toast?.error?.(e?.response?.data?.message || 'Xóa tài khoản thất bại');
+    }
+  };
+
   const handleLoggedIn = (u) => {
     setUser(u);
     setView("app");
@@ -74,6 +90,7 @@ export default function App() {
           user={user} 
           onLogout={handleLogout} 
           onEditProfile={() => { setEditTarget('self'); setMode('profile-edit'); }}
+          onDeleteSelf={handleDeleteSelf}
         />
       )}
 
@@ -145,7 +162,19 @@ export default function App() {
                       <button className="button button--ghost" onClick={() => { setEditTarget('self'); setMode('profile'); }}>Hồ sơ của tôi</button>
                     </div>
                   </div>
-                  <AdminUserList refreshKey={listRefreshKey} onSelect={(u) => { setSelectedUser(u); setEditTarget('selected'); setMode('profile'); }} />
+                  <AdminUserList
+                    refreshKey={listRefreshKey}
+                    onSelect={(u) => { setSelectedUser(u); setEditTarget('selected'); setMode('profile'); }}
+                    onDeleted={(summary) => {
+                      setListRefreshKey(k => k + 1);
+                      // If the selected user was deleted, clear selection
+                      if (selectedUser && summary?.deleted > 0) {
+                        setSelectedUser(null);
+                        setEditTarget('self');
+                        setMode('profile');
+                      }
+                    }}
+                  />
                 </div>
                 <div className="card">
                   <div className="card__header">{editTarget === 'self' ? `Hồ sơ: ${user.name}` : (selectedUser ? `Hồ sơ: ${selectedUser.name}` : 'Hồ sơ')}</div>
@@ -179,14 +208,15 @@ export default function App() {
                               {selectedUser?.role !== 'admin' && (
                                 <button className="button button--danger" onClick={async () => {
                                   if (!selectedUser) return;
-                                  const ok = window.confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`);
+                                  const ok = await (confirm ? confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`) : Promise.resolve(window.confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`)));
                                   if (!ok) return;
                                   try {
                                     await api.delete(`/users/${selectedUser._id}`);
                                     setSelectedUser(null);
                                     setListRefreshKey(k => k + 1);
+                                    toast?.success?.('Đã xóa người dùng');
                                   } catch (e) {
-                                    alert(e?.response?.data?.message || 'Xóa thất bại');
+                                    toast?.error?.(e?.response?.data?.message || 'Xóa thất bại');
                                   }
                                 }}>Xóa người dùng</button>
                               )}
