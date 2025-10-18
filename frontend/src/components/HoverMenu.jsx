@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function HoverMenu({ user, onLogout, onEditProfile }) {
+export default function HoverMenu({ user, onLogout, onEditProfile, onDeleteSelf }) {
   if (!user) return null;
   return (
     <aside className="hover-menu" title={`${user.name} <${user.email}>`}>
@@ -16,7 +16,11 @@ export default function HoverMenu({ user, onLogout, onEditProfile }) {
         {user.email && <div className="hover-menu__email">{user.email}</div>}
         <div className="spacer" />
         {user?.role !== 'admin' && (
-          <button className="button button--ghost hover-menu__logout" onClick={onEditProfile}>Cập nhật thông tin</button>
+          <>
+            <button className="button button--ghost hover-menu__logout" onClick={onEditProfile}>Cập nhật thông tin</button>
+            <div className="spacer" />
+            <button className="button button--danger hover-menu__logout" onClick={onDeleteSelf}>Xóa tài khoản</button>
+          </>
         )}
         <div className="spacer" />
         <button className="button hover-menu__logout" onClick={onLogout}>Đăng xuất</button>
