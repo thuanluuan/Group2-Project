@@ -95,3 +95,20 @@ async function updateMe(req, res) {
 }
 
 module.exports = { register, login, logout, me, updateMe };
+// Delete own account (non-admin)
+async function deleteMe(req, res) {
+  try {
+    const user = await AuthUser.findById(req.user?.sub).lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Không thể xóa tài khoản admin' });
+    }
+    await AuthUser.findByIdAndDelete(user._id);
+    return res.json({ message: 'Tài khoản đã được xóa' });
+  } catch (err) {
+    console.error('deleteMe error:', err);
+    return res.status(500).json({ message: 'Failed to delete account' });
+  }
+}
+
+module.exports.deleteMe = deleteMe;
