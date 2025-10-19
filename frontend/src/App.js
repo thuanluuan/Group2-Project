@@ -8,6 +8,9 @@ import AdminUserList from "./components/AdminUserList";
 import HoverMenu from "./components/HoverMenu";
 import Register from "./components/Register";
 import Login from "./components/Login";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
+import ChangePasswordAdmin from "./components/ChangePasswordAdmin";
 import AuthHeader from "./components/AuthHeader";
 import { useToast } from "./components/Toast";
 import { useConfirm } from "./components/ConfirmDialog";
@@ -22,9 +25,10 @@ export default function App() {
       return null;
     }
   });
-  const [view, setView] = useState(user ? "app" : "login"); // 'app' | 'login' | 'register'
+  const [view, setView] = useState(user ? "app" : "login"); // 'app' | 'login' | 'register' | 'forgot' | 'reset'
+  const [resetEmail, setResetEmail] = useState("");
   const [selectedUser, setSelectedUser] = useState(null); // for admin viewing others
-  const [mode, setMode] = useState('profile'); // 'profile' | 'profile-edit'
+  const [mode, setMode] = useState('profile'); // 'profile' | 'profile-edit' | 'change-password'
   const [editTarget, setEditTarget] = useState('self'); // 'self' | 'selected'
   const [listRefreshKey, setListRefreshKey] = useState(0);
 
@@ -90,6 +94,10 @@ export default function App() {
           user={user} 
           onLogout={handleLogout} 
           onEditProfile={() => { setEditTarget('self'); setMode('profile-edit'); }}
+          onChangePassword={() => { setEditTarget('self'); setMode('change-password'); }}
+          isChangePasswordMode={user.role === 'admin' && mode === 'change-password'}
+          isProfileEditMode={user.role !== 'admin' && mode === 'profile-edit'}
+          onGoHome={() => { setMode('profile'); setEditTarget('self'); }}
           onDeleteSelf={handleDeleteSelf}
         />
       )}
@@ -102,17 +110,38 @@ export default function App() {
                 {view === "login" ? (
                   <>
                     <div className="card__header">Đăng nhập</div>
-                    <div className="card__body"><Login onLoggedIn={handleLoggedIn} /></div>
-                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+                    <div className="card__body"><Login onLoggedIn={handleLoggedIn} onForgot={() => setView('forgot')} /></div>
+                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
                       <button className="button button--ghost" onClick={() => setView('register')}>Tạo tài khoản</button>
+                      <button className="button button--ghost" onClick={() => setView('forgot')}>Quên mật khẩu</button>
                     </div>
                   </>
-                ) : (
+                ) : view === 'register' ? (
                   <>
                     <div className="card__header">Đăng ký</div>
                     <div className="card__body"><Register onRegistered={() => setView('login')} /></div>
                     <div style={{ marginTop: 12 }}>
                       <button className="button button--ghost" onClick={() => setView('login')}>Đã có tài khoản? Đăng nhập</button>
+                    </div>
+                  </>
+                ) : view === 'forgot' ? (
+                  <>
+                    <div className="card__header">Quên mật khẩu</div>
+                    <div className="card__body">
+                      <ForgotPassword onRequested={(email) => { setResetEmail(email); setView('reset'); }} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="card__header">Nhập OTP và mật khẩu mới</div>
+                    <div className="card__body">
+                      <ResetPassword defaultEmail={resetEmail} onDone={() => setView('login')} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
                     </div>
                   </>
                 )}
@@ -140,7 +169,7 @@ export default function App() {
                   <div className="card">
                     <div className="card__header">Cập nhật thông tin cá nhân</div>
                     <div className="card__body">
-                      <ProfileForm initialUser={user} onSaved={async () => {
+                      <ProfileForm initialUser={user} allowSelfChangePassword focusChangePassword={false} onSaved={async () => {
                         try {
                           const res = await api.get('/auth/me');
                           setUser(res.data);
@@ -154,88 +183,94 @@ export default function App() {
             )}
 
             {user.role === 'admin' && (
-              <div className="grid" style={{ gridTemplateColumns: '0.9fr 1.1fr' }}>
-                <div>
-                  <div className="card" style={{ marginBottom: 16 }}>
-                    <div className="card__body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                      <div className="badge">Quản trị</div>
-                      <button className="button button--ghost" onClick={() => { setEditTarget('self'); setMode('profile'); }}>Hồ sơ của tôi</button>
-                    </div>
-                  </div>
-                  <AdminUserList
-                    refreshKey={listRefreshKey}
-                    onSelect={(u) => { setSelectedUser(u); setEditTarget('selected'); setMode('profile'); }}
-                    onDeleted={(summary) => {
-                      setListRefreshKey(k => k + 1);
-                      // If the selected user was deleted, clear selection
-                      if (selectedUser && summary?.deleted > 0) {
-                        setSelectedUser(null);
-                        setEditTarget('self');
-                        setMode('profile');
-                      }
-                    }}
-                  />
+              mode === 'change-password' ? (
+                // Separate page: only the Change Password card, no account list
+                <div className="grid" style={{ gridTemplateColumns: '1fr' }}>
+                  <ChangePasswordAdmin />
                 </div>
-                <div className="card">
-                  <div className="card__header">{editTarget === 'self' ? `Hồ sơ: ${user.name}` : (selectedUser ? `Hồ sơ: ${selectedUser.name}` : 'Hồ sơ')}</div>
-                  <div className="card__body">
-                    {editTarget === 'self' ? (
-                      mode === 'profile' ? (
-                        <>
-                          <ProfileView user={user} />
-                          <div className="row" style={{ marginTop: 12 }}>
-                            <button className="button" onClick={() => setMode('profile-edit')}>Sửa thông tin</button>
-                          </div>
-                        </>
-                      ) : (
-                        <ProfileForm initialUser={user} onSaved={async () => {
-                          try {
-                            const res = await api.get('/auth/me');
-                            setUser(res.data);
-                          } catch {}
+              ) : (
+                <div className="grid" style={{ gridTemplateColumns: '0.9fr 1.1fr' }}>
+                  <div>
+                    <div className="card" style={{ marginBottom: 16 }}>
+                      <div className="card__body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <div className="badge">Quản trị</div>
+                        <button className="button button--ghost" onClick={() => { setEditTarget('self'); setMode('profile'); }}>Hồ sơ của tôi</button>
+                      </div>
+                    </div>
+                    <AdminUserList
+                      refreshKey={listRefreshKey}
+                      onSelect={(u) => { setSelectedUser(u); setEditTarget('selected'); setMode('profile'); }}
+                      onDeleted={(summary) => {
+                        setListRefreshKey(k => k + 1);
+                        if (selectedUser && summary?.deleted > 0) {
+                          setSelectedUser(null);
+                          setEditTarget('self');
                           setMode('profile');
-                        }} />
-                      )
-                    ) : (
-                      !selectedUser ? (
-                        <div className="empty">Chọn một tài khoản ở danh sách để xem/cập nhật</div>
-                      ) : (
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="card">
+                    <div className="card__header">{editTarget === 'self' ? `Hồ sơ: ${user.name}` : (selectedUser ? `Hồ sơ: ${selectedUser.name}` : 'Hồ sơ')}</div>
+                    <div className="card__body">
+                      {editTarget === 'self' ? (
                         mode === 'profile' ? (
                           <>
-                            <ProfileView user={selectedUser} />
-                            <div className="row" style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                            <ProfileView user={user} />
+                            <div className="row" style={{ marginTop: 12 }}>
                               <button className="button" onClick={() => setMode('profile-edit')}>Sửa thông tin</button>
-                              {selectedUser?.role !== 'admin' && (
-                                <button className="button button--danger" onClick={async () => {
-                                  if (!selectedUser) return;
-                                  const ok = await (confirm ? confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`) : Promise.resolve(window.confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`)));
-                                  if (!ok) return;
-                                  try {
-                                    await api.delete(`/users/${selectedUser._id}`);
-                                    setSelectedUser(null);
-                                    setListRefreshKey(k => k + 1);
-                                    toast?.success?.('Đã xóa người dùng');
-                                  } catch (e) {
-                                    toast?.error?.(e?.response?.data?.message || 'Xóa thất bại');
-                                  }
-                                }}>Xóa người dùng</button>
-                              )}
                             </div>
                           </>
                         ) : (
-                          <ProfileForm initialUser={selectedUser} isAdminEditing userId={selectedUser._id} onSaved={async () => {
+                          <ProfileForm initialUser={user} allowSelfChangePassword={false} focusChangePassword={false} onSaved={async () => {
                             try {
-                              const res = await api.get(`/users/${selectedUser._id}`);
-                              setSelectedUser(res.data);
+                              const res = await api.get('/auth/me');
+                              setUser(res.data);
                             } catch {}
                             setMode('profile');
                           }} />
                         )
-                      )
-                    )}
+                      ) : (
+                        !selectedUser ? (
+                          <div className="empty">Chọn một tài khoản ở danh sách để xem/cập nhật</div>
+                        ) : (
+                          mode === 'profile' ? (
+                            <>
+                              <ProfileView user={selectedUser} />
+                              <div className="row" style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                                <button className="button" onClick={() => setMode('profile-edit')}>Sửa thông tin</button>
+                                {selectedUser?.role !== 'admin' && (
+                                  <button className="button button--danger" onClick={async () => {
+                                    if (!selectedUser) return;
+                                    const ok = await (confirm ? confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`) : Promise.resolve(window.confirm(`Xóa người dùng '${selectedUser.name}'? Hành động này không thể hoàn tác.`)));
+                                    if (!ok) return;
+                                    try {
+                                      await api.delete(`/users/${selectedUser._id}`);
+                                      setSelectedUser(null);
+                                      setListRefreshKey(k => k + 1);
+                                      toast?.success?.('Đã xóa người dùng');
+                                    } catch (e) {
+                                      toast?.error?.(e?.response?.data?.message || 'Xóa thất bại');
+                                    }
+                                  }}>Xóa người dùng</button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <ProfileForm initialUser={selectedUser} isAdminEditing userId={selectedUser._id} onSaved={async () => {
+                              try {
+                                const res = await api.get(`/users/${selectedUser._id}`);
+                                setSelectedUser(res.data);
+                              } catch {}
+                              setMode('profile');
+                            }} />
+                          )
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             )}
           </>
   )}
