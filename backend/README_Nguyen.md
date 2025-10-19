@@ -59,6 +59,18 @@ Ví dụ mẫu:
 PORT=3000
 MONGODB_URI="mongodb+srv://group2user:abc12345@cluster0.oy7mfyg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 DB_NAME=groupDB
+# Gmail SMTP for sending OTP
+EMAIL_USER=thuanluuan@gmail.com
+# Use Gmail App Password (16 chars) here, not your real account password
+EMAIL_PASS=eeoj pqwo vxam kdyo
+EMAIL_FROM="User Portal <thuanluuan@gmail.com>"
+DEBUG_RETURN_OTP=true
+
+# Cloudinary (for avatar uploads)
+CLOUDINARY_CLOUD_NAME=dey48rxfa
+CLOUDINARY_API_KEY=834857698129936
+CLOUDINARY_API_SECRET=f6TPojqv6rEe6vI9XEc0xgdMPWI
+CLOUDINARY_AVATAR_FOLDER=avatars
 
 ```
 
