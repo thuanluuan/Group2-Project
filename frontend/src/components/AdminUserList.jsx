@@ -121,7 +121,7 @@ export default function AdminUserList({ onSelect, refreshKey = 0, onDeleted }) {
               key={u._id}
               ref={(el) => { if (el) itemRefs.current[u._id] = el; }}
               className={`item${isExact ? ' item--highlight' : ''}`}
-              style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', gap: 10 }}
+              style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr', alignItems: 'center', gap: 10 }}
             >
               <input
                 type="checkbox"
@@ -136,6 +136,13 @@ export default function AdminUserList({ onSelect, refreshKey = 0, onDeleted }) {
                   });
                 }}
               />
+              <div style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', background: '#1b2230', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {u.avatarUrl ? (
+                  <img src={u.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>{String(u.name || u.email || '?').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
               <div onClick={() => onSelect?.(u)} style={{ cursor: 'pointer' }}>
                 <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {u.name}

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function HoverMenu({ user, onLogout, onEditProfile, onDeleteSelf }) {
+export default function HoverMenu({ user, onLogout, onEditProfile, onDeleteSelf, onChangePassword, isChangePasswordMode = false, isProfileEditMode = false, onGoHome }) {
   if (!user) return null;
   return (
     <aside className="hover-menu" title={`${user.name} <${user.email}>`}>
@@ -17,9 +17,22 @@ export default function HoverMenu({ user, onLogout, onEditProfile, onDeleteSelf 
         <div className="spacer" />
         {user?.role !== 'admin' && (
           <>
-            <button className="button button--ghost hover-menu__logout" onClick={onEditProfile}>Cập nhật thông tin</button>
+            {isProfileEditMode ? (
+              <button className="button button--ghost hover-menu__logout" onClick={onGoHome}>Về trang chủ</button>
+            ) : (
+              <button className="button button--ghost hover-menu__logout" onClick={onEditProfile}>Cập nhật thông tin</button>
+            )}
             <div className="spacer" />
             <button className="button button--danger hover-menu__logout" onClick={onDeleteSelf}>Xóa tài khoản</button>
+          </>
+        )}
+        {user?.role === 'admin' && (
+          <>
+            {isChangePasswordMode ? (
+              <button className="button button--ghost hover-menu__logout" onClick={onGoHome}>Về trang chủ</button>
+            ) : (
+              <button className="button button--ghost hover-menu__logout" onClick={onChangePassword}>Đổi mật khẩu</button>
+            )}
           </>
         )}
         <div className="spacer" />
