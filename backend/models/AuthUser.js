@@ -18,6 +18,9 @@ const authUserSchema = new mongoose.Schema(
   address: { type: String, trim: true, maxlength: 200 },
   phone: { type: String, trim: true, maxlength: 20 },
   avatarUrl: { type: String, trim: true },
+  // Password reset OTP fields
+  resetOtp: { type: String, select: false },
+  resetOtpExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );
