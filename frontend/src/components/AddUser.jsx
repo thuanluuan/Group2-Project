@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../lib/api";
 
-const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
-
 export default function AddUser({ onAdded, editUser, onCancelEdit }) {
   const [form, setForm] = useState({ name: "", email: "" });
   const [saving, setSaving] = useState(false);
