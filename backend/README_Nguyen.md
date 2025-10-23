@@ -53,7 +53,7 @@ npm install
 
 2) Tạo file `.env` (chỉ chứa KEY=VALUE, không chứa lệnh shell)
 
-Ví dụ mẫu:
+- Ví dụ mẫu:
 
 ```
 PORT=3000
