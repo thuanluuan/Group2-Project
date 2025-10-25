@@ -1,8 +1,14 @@
 const AuthUser = require("../models/AuthUser");
+const RefreshToken = require("../models/RefreshToken");
 const jwt = require("jsonwebtoken");
+const crypto = require('crypto');
 const { sendMail } = require("../config/mailer");
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_key";
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "dev_secret_key";
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "dev_secret_key";
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
+const REFRESH_TOKEN_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 30);
+const COOKIE_SECURE = String(process.env.COOKIE_SECURE || '').toLowerCase() === 'true';
 const DEBUG_RETURN_OTP = String(process.env.DEBUG_RETURN_OTP || "").toLowerCase() === "true";
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "admin@gmail.com")
   .split(",")
@@ -38,6 +44,29 @@ async function register(req, res) {
   }
 }
 
+function signAccessToken(user) {
+  return jwt.sign({ sub: user._id, email: user.email, role: user.role }, JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+function generateRefreshTokenValue() {
+  return crypto.randomBytes(48).toString('base64url');
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function setRefreshCookie(res, token) {
+  const maxAgeMs = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+  res.cookie('refreshToken', token, {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: 'lax',
+    maxAge: maxAgeMs,
+    path: '/',
+  });
+}
+
 async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -50,17 +79,59 @@ async function login(req, res) {
     const match = await user.comparePassword(password);
     if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
-  const token = jwt.sign({ sub: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, user: { _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role } });
+  const accessToken = signAccessToken(user);
+  // Create refresh token record
+  const value = generateRefreshTokenValue();
+  const tokenHash = hashToken(value);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const jti = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(12).toString('hex');
+  await RefreshToken.create({ user: user._id, tokenHash, expiresAt, jti, userAgent: req.get('user-agent'), ip: req.ip });
+  setRefreshCookie(res, value);
+  res.json({ accessToken, token: accessToken, user: { _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role } });
   } catch (err) {
     console.error("login error:", err);
     res.status(500).json({ message: "Failed to login" });
   }
 }
 
-// Simple logout for clients: instruct client to drop token. No server-side session stored.
-function logout(req, res) {
-  res.json({ message: "Logged out" });
+// POST /auth/refresh
+async function refresh(req, res) {
+  try {
+    const token = req.cookies?.refreshToken;
+    if (!token) return res.status(401).json({ message: 'No refresh token' });
+    const tokenHash = hashToken(token);
+    const doc = await RefreshToken.findOne({ tokenHash, revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } });
+    if (!doc) return res.status(401).json({ message: 'Invalid refresh token' });
+    const user = await AuthUser.findById(doc.user);
+    if (!user) return res.status(401).json({ message: 'Invalid session' });
+    // rotate refresh token
+    const newValue = generateRefreshTokenValue();
+    doc.tokenHash = hashToken(newValue);
+    doc.expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    await doc.save();
+    setRefreshCookie(res, newValue);
+    const accessToken = signAccessToken(user);
+    return res.json({ accessToken, token: accessToken });
+  } catch (err) {
+    console.error('refresh error:', err);
+    return res.status(500).json({ message: 'Failed to refresh token' });
+  }
+}
+
+// POST /auth/logout -> revoke refresh token and clear cookie
+async function logout(req, res) {
+  try {
+    const token = req.cookies?.refreshToken;
+    if (token) {
+      const tokenHash = hashToken(token);
+      await RefreshToken.findOneAndUpdate({ tokenHash }, { $set: { revokedAt: new Date() } });
+    }
+  res.clearCookie('refreshToken', { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/' });
+    return res.json({ message: 'Logged out' });
+  } catch (err) {
+    console.error('logout error:', err);
+    return res.status(500).json({ message: 'Failed to logout' });
+  }
 }
 
 async function me(req, res) {
@@ -76,6 +147,7 @@ async function me(req, res) {
 
 async function updateMe(req, res) {
   try {
+  if (req.user?.role === 'moderator') return res.status(403).json({ message: 'Moderator không được phép cập nhật thông tin' });
   const { name, dob, address, phone, avatarUrl } = req.body;
   const updates = {};
     if (name !== undefined) updates.name = name;
@@ -96,10 +168,13 @@ async function updateMe(req, res) {
   }
 }
 
-module.exports = { register, login, logout, me, updateMe };
+module.exports = { register, login, logout, me, updateMe, refresh };
 // Delete own account (non-admin)
 async function deleteMe(req, res) {
   try {
+    if (req.user?.role === 'moderator') {
+      return res.status(403).json({ message: 'Moderator không được phép xóa tài khoản' });
+    }
     const user = await AuthUser.findById(req.user?.sub).lean();
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.role === 'admin') {
@@ -120,8 +195,11 @@ async function forgotPassword(req, res) {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'Email required' });
-    const user = await AuthUser.findOne({ email }).select('+resetOtp +resetOtpExpires');
+    const user = await AuthUser.findOne({ email }).select('+resetOtp +resetOtpExpires +role');
     if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
+    if (user.role === 'moderator') {
+      return res.status(403).json({ message: 'Tài khoản Moderator không được phép đổi mật khẩu' });
+    }
     // Generate a 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const expires = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
@@ -155,8 +233,11 @@ async function resetPassword(req, res) {
     if (!email || !otp || !newPassword) {
       return res.status(400).json({ message: 'email, otp, newPassword required' });
     }
-    const user = await AuthUser.findOne({ email }).select('+password +resetOtp +resetOtpExpires');
+    const user = await AuthUser.findOne({ email }).select('+password +resetOtp +resetOtpExpires +role');
     if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
+    if (user.role === 'moderator') {
+      return res.status(403).json({ message: 'Tài khoản Moderator không được phép đổi mật khẩu' });
+    }
     if (!user.resetOtp || !user.resetOtpExpires) {
       return res.status(400).json({ message: 'OTP không hợp lệ' });
     }
@@ -188,6 +269,9 @@ async function forgotPasswordMe(req, res) {
   try {
     const userId = req.user?.sub;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role === 'moderator') {
+      return res.status(403).json({ message: 'Moderator không được phép đổi mật khẩu' });
+    }
     const user = await AuthUser.findById(userId).select('+resetOtp +resetOtpExpires');
     if (!user) return res.status(404).json({ message: 'User not found' });
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -220,6 +304,9 @@ async function resetPasswordMe(req, res) {
   try {
     const userId = req.user?.sub;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role === 'moderator') {
+      return res.status(403).json({ message: 'Moderator không được phép đổi mật khẩu' });
+    }
     const { otp, newPassword } = req.body || {};
     if (!otp || !newPassword) {
       return res.status(400).json({ message: 'otp, newPassword required' });

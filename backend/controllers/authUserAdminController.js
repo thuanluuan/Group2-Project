@@ -126,7 +126,14 @@ async function updateAuthUser(req, res) {
   } catch (e) {
     console.error("updateAuthUser error:", e);
     if (e.code === 11000) return res.status(409).json({ message: "Email đã tồn tại hoặc đã có tài khoản admin" });
-    if (e.name === "CastError") return res.status(400).json({ message: "Invalid id" });
+    if (e.name === "ValidationError") {
+      const first = e?.errors ? Object.values(e.errors)[0] : null;
+      return res.status(400).json({ message: first?.message || "Dữ liệu không hợp lệ" });
+    }
+    if (e.name === "CastError") {
+      if (e.path && e.path !== '_id') return res.status(400).json({ message: `Giá trị trường '${e.path}' không hợp lệ` });
+      return res.status(400).json({ message: "Invalid id" });
+    }
     res.status(500).json({ message: "Failed to update auth user" });
   }
 }

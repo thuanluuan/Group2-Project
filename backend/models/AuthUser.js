@@ -13,7 +13,7 @@ const authUserSchema = new mongoose.Schema(
       match: [/^\S+@\S+\.\S+$/, "Email is invalid"],
     },
     dob: { type: Date, required: true },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+  role: { type: String, enum: ["user", "moderator", "admin"], default: "user" },
     password: { type: String, required: true, minlength: 6 },
   address: { type: String, trim: true, maxlength: 200 },
   phone: { type: String, trim: true, maxlength: 20 },
