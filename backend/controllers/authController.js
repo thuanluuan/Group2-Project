@@ -155,12 +155,22 @@ async function updateMe(req, res) {
   if (address !== undefined) updates.address = address;
   if (phone !== undefined) updates.phone = phone;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
-    const user = await AuthUser.findByIdAndUpdate(req.user?.sub, updates, {
+    // Fetch current to compare avatarUrl (for cleanup on Cloudinary)
+    const userId = req.user?.sub;
+    const current = await AuthUser.findById(userId, { avatarUrl: 1 }).lean();
+    const user = await AuthUser.findByIdAndUpdate(userId, updates, {
       new: true,
       runValidators: true,
       projection: { password: 0 },
     });
     if (!user) return res.status(404).json({ message: "User not found" });
+    // After successful update, if avatarUrl changed from previous Cloudinary URL, delete the old asset
+    if (avatarUrl !== undefined && current?.avatarUrl && current.avatarUrl !== user.avatarUrl) {
+      try {
+        const { deleteByUrl } = require('../utils/cloudinaryHelpers');
+        await deleteByUrl(current.avatarUrl);
+      } catch {}
+    }
   res.json({ _id: user._id, name: user.name, email: user.email, dob: user.dob, role: user.role, address: user.address, phone: user.phone, avatarUrl: user.avatarUrl });
   } catch (err) {
     console.error("updateMe error:", err);
