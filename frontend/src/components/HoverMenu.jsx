@@ -15,7 +15,7 @@ export default function HoverMenu({ user, onLogout, onEditProfile, onDeleteSelf,
         <div className="hover-menu__name">{user.name}</div>
         {user.email && <div className="hover-menu__email">{user.email}</div>}
         <div className="spacer" />
-        {user?.role !== 'admin' && (
+        {user?.role === 'user' && (
           <>
             {isProfileEditMode ? (
               <button className="button button--ghost hover-menu__logout" onClick={onGoHome}>Về trang chủ</button>
