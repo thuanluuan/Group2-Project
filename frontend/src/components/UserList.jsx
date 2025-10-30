@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 import api from "../lib/api";
 
@@ -30,7 +31,7 @@ export default function UserList({ onEdit }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa user này?")) return;
     try {
-        await api.delete(`/users/${id}`);
+  await api.delete(`/users/${id}`);
       setUsers(users.filter(user => user._id !== id));
     } catch (err) {
       console.error(err);

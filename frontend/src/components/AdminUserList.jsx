@@ -69,7 +69,7 @@ export default function AdminUserList({ onSelect, refreshKey = 0, onDeleted }) {
         <div className="row" style={{ marginBottom: 10, gap: 8 }}>
           <input
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e)=> setSearchText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); setAutoFocusOnExact(true); setQ(searchText); } }}
             type="text" className="input" placeholder="Tìm theo tên hoặc email..."
             style={{ flex: 1 }}

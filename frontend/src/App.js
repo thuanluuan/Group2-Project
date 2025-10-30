@@ -67,8 +67,7 @@ export default function App() {
   const toast = useToast?.() || null;
   const confirm = useConfirm?.();
   const handleDeleteSelf = async () => {
-    const confirmMessage = "Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.";
-    const ok = await (confirm ? confirm(confirmMessage) : Promise.resolve(window.confirm(confirmMessage)));
+  const ok = await (confirm ? confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.") : Promise.resolve(window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.")));
     if (!ok) return;
     try {
       await api.delete('/auth/me');

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import api from "../lib/api";
 
+const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
+
 export default function Register({ onRegistered }) {
   const [form, setForm] = useState({ name: "", email: "", dob: "", password: "", confirm: "" });
   const [loading, setLoading] = useState(false);

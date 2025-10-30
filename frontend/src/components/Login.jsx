@@ -1,6 +1,8 @@
 import { useState } from "react";
 import api from "../lib/api";
 
+const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
+
 export default function Login({ onLoggedIn, onForgot }) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
