@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import api from "../lib/api";
 
 export default function ProfileForm({ initialUser, onSaved, isAdminEditing, userId, focusChangePassword = false, allowSelfChangePassword = false }) {
-  const [form, setForm] = useState({ name: "", dob: "", address: "", phone: "", avatarUrl: "", role: "" });
+  const [form, setForm] = useState({ name: "", dob: "", address: "", phone: "", avatarUrl: "" });
   const [saving, setSaving] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(allowSelfChangePassword && !!focusChangePassword);
@@ -24,7 +24,6 @@ export default function ProfileForm({ initialUser, onSaved, isAdminEditing, user
         address: initialUser.address || "",
         phone: initialUser.phone || "",
         avatarUrl: initialUser.avatarUrl || "",
-        role: initialUser.role || "user",
       });
     }
   }, [initialUser]);
@@ -42,24 +41,19 @@ export default function ProfileForm({ initialUser, onSaved, isAdminEditing, user
     };
   }, []);
 
-  const isModeratorSelf = !isAdminEditing && (initialUser?.role === 'moderator');
   const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
-  if (isModeratorSelf) return; // read-only for moderator
-  setSaving(true);
+    setSaving(true);
     try {
-      const payload = { name: form.name };
-      if (form.dob) payload.dob = form.dob;
+      const payload = { name: form.name, dob: form.dob };
       if (showExtras) {
         payload.address = form.address;
         payload.phone = form.phone;
         payload.avatarUrl = form.avatarUrl;
       }
       if (isAdminEditing && userId) {
-        // Only admin can change role; include if present
-        if (form.role) payload.role = form.role;
         // Admin updates another user
         await api.put(`/users/${userId}`, payload);
       } else {
@@ -126,38 +120,18 @@ export default function ProfileForm({ initialUser, onSaved, isAdminEditing, user
     <form onSubmit={submit} className="form">
       <div className="field">
         <label className="label">Họ tên</label>
-        <input className="input" name="name" value={form.name} onChange={change} required disabled={isModeratorSelf} />
+        <input className="input" name="name" value={form.name} onChange={change} required />
       </div>
-      {isAdminEditing && (
-        <div className="field">
-          <label className="label">Phân quyền</label>
-          <select className="input" name="role" value={form.role || 'user'} onChange={change}>
-            <option value="user">User</option>
-            <option value="moderator">Moderator</option>
-            <option value="admin">Admin</option>
-          </select>
-          <div className="row" style={{ marginTop: 6 }}>
-            <span className={`chip ${form.role === 'admin' ? 'chip--danger' : form.role === 'moderator' ? 'chip--accent' : 'chip--muted'}`}>
-              Quyền: {form.role || 'user'}
-            </span>
-          </div>
-          <div className="empty" style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-            Chỉ Admin mới có quyền phân quyền. Hệ thống chỉ cho phép duy nhất 1 tài khoản Admin.
-          </div>
-        </div>
-      )}
       <div className="field">
         <label className="label">Ngày sinh</label>
-        <input className="input" name="dob" type="date" value={form.dob} onChange={change} required disabled={isModeratorSelf} />
+        <input className="input" name="dob" type="date" value={form.dob} onChange={change} required />
       </div>
-      {!isModeratorSelf && (
-        <div className="row">
-          <button className="button button--ghost" type="button" onClick={() => setShowExtras(s => !s)}>
-            {showExtras ? 'Ẩn bổ sung' : 'Bổ sung thông tin'}
-          </button>
-        </div>
-      )}
-      {showExtras && !isModeratorSelf && (
+      <div className="row">
+        <button className="button button--ghost" type="button" onClick={() => setShowExtras(s => !s)}>
+          {showExtras ? 'Ẩn bổ sung' : 'Bổ sung thông tin'}
+        </button>
+      </div>
+      {showExtras && (
         <>
           <div className="field">
             <label className="label">Ảnh cá nhân</label>
@@ -205,14 +179,14 @@ export default function ProfileForm({ initialUser, onSaved, isAdminEditing, user
           </div>
         </>
       )}
-      {allowSelfChangePassword && !isAdminEditing && !isModeratorSelf && (
+      {allowSelfChangePassword && !isAdminEditing && (
         <div className="row" style={{ marginTop: 12 }}>
           <button className="button button--ghost" type="button" onClick={() => setShowChangePwd(s => !s)}>
             {showChangePwd ? 'Ẩn đổi mật khẩu' : 'Đổi mật khẩu'}
           </button>
         </div>
       )}
-      {allowSelfChangePassword && !isAdminEditing && showChangePwd && !isModeratorSelf && (
+      {allowSelfChangePassword && !isAdminEditing && showChangePwd && (
         <div className="card" style={{ marginTop: 8 }}>
           <div className="card__header">Đổi mật khẩu</div>
           <div className="card__body">
@@ -251,11 +225,9 @@ export default function ProfileForm({ initialUser, onSaved, isAdminEditing, user
           </div>
         </div>
       )}
-      {!isModeratorSelf && (
-        <div className="row">
-          <button className="button" type="submit" disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
-        </div>
-      )}
+      <div className="row">
+        <button className="button" type="submit" disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
+      </div>
     </form>
   );
 }

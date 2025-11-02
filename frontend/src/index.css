@@ -186,30 +186,6 @@ a { color: inherit; text-decoration: none; }
 .input::placeholder { color: #8c95a7; }
 .input:hover { border-color: rgba(255,255,255,0.18); }
 .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,140,255,0.25), 0 0 0 1px rgba(255,255,255,0.05) inset; }
-.input:disabled { opacity: 0.6; cursor: not-allowed; }
-
-/* Nice select styles */
-select.input {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  padding-right: 38px; /* room for chevron */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aab4d6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-}
-select.input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(108,140,255,0.25), 0 0 0 1px rgba(255,255,255,0.05) inset;
-}
-/* Option colors (best effort; support varies by browser) */
-select.input option {
-  color: #e8ecf8;
-  background-color: #0f172a;
-}
-select.input option:disabled {
-  color: #8a93a8;
-}
 
 .row { display: flex; gap: 10px; }
 
@@ -281,12 +257,6 @@ select.input option:disabled {
   border-color: rgba(124,174,255,0.45);
   color: #cfe8ff;
 }
-.chip--danger {
-  background: linear-gradient(180deg, rgba(255,107,107,0.22), rgba(255,107,107,0.18));
-  border-color: rgba(255,107,107,0.45);
-  color: #ffdada;
-}
-.chip--muted { color: var(--muted); }
 
 .empty {
   text-align: center;
