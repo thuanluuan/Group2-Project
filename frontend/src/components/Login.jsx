@@ -1,41 +1,32 @@
 import { useState } from "react";
-import api from "../lib/api";
+import { useDispatch, useSelector } from 'react-redux';
+import { loginThunk, selectAuth } from '../store/authSlice';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
 
 export default function Login({ onLoggedIn, onForgot }) {
   const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { status } = useSelector(selectAuth);
+  const loading = status === 'loading';
   const [blockInfo, setBlockInfo] = useState(null);
 
   const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setBlockInfo(null);
-    try {
-      const res = await api.post(`/auth/login`, form);
-      // Save token in localStorage for simple client-side auth
-      localStorage.setItem("auth_token", res.data.token);
-      localStorage.setItem("auth_user", JSON.stringify(res.data.user));
-      onLoggedIn?.(res.data.user);
-    } catch (err) {
-      console.error(err);
-      const errorData = err?.response?.data;
-      
-      // Kiểm tra nếu tài khoản bị block
-      if (err?.response?.status === 429 && errorData?.blocked) {
-        setBlockInfo({
-          message: errorData.message,
-          remainingMinutes: errorData.remainingMinutes,
-          adminEmail: errorData.adminContactEmail,
-        });
-      } else {
-        alert(errorData?.message || "Đăng nhập thất bại");
-      }
-    } finally {
-      setLoading(false);
+    const action = await dispatch(loginThunk({ email: form.email, password: form.password }));
+    if (loginThunk.fulfilled.match(action)) {
+      onLoggedIn?.(action.payload.user);
+    } else if (action.payload?.status === 429 && action.payload?.data?.blocked) {
+      setBlockInfo({
+        message: action.payload.data.message,
+        remainingMinutes: action.payload.data.remainingMinutes,
+        adminEmail: action.payload.data.adminContactEmail,
+      });
+    } else {
+      alert(action.payload?.message || 'Đăng nhập thất bại');
     }
   };
 

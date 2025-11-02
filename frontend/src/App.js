@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useDispatch } from 'react-redux';
+import { logout as logoutAction } from './store/authSlice';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from "./lib/api";
 import UserList from "./components/UserList";
 import AddUser from "./components/AddUser";
@@ -19,6 +22,9 @@ import { useToast } from "./components/Toast";
 import { useConfirm } from "./components/ConfirmDialog";
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [reloadKey, setReloadKey] = useState(0);
   const [editUser, setEditUser] = useState(null);
   const [user, setUser] = useState(() => {
@@ -40,6 +46,15 @@ export default function App() {
     if (user) setView("app");
   }, [user]);
 
+  // Route guarding inside App (in addition to ProtectedRoute)
+  useEffect(() => {
+    const pathname = location.pathname || '/';
+    const needsAuth = pathname === '/profile' || pathname === '/admin';
+    if (needsAuth && !user) {
+      navigate('/login', { replace: true, state: { from: pathname } });
+    }
+  }, [location.pathname, user, navigate]);
+
   // On app mount, if token exists, verify and load user from /auth/me
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -53,9 +68,10 @@ export default function App() {
         // invalid token handled by interceptor; ensure state reflects logged out
         setUser(null);
         setView('login');
+        navigate('/login', { replace: true });
       }
     })();
-  }, []);
+  }, [navigate]);
 
   // Detect reset token from URL to open reset-by-token view directly
   useEffect(() => {
@@ -77,6 +93,8 @@ export default function App() {
     localStorage.removeItem("auth_user");
     setUser(null);
     setView("login");
+    dispatch(logoutAction());
+    navigate('/login', { replace: true });
   };
 
   const toast = useToast?.() || null;
@@ -96,6 +114,10 @@ export default function App() {
   const handleLoggedIn = (u) => {
     setUser(u);
     setView("app");
+    // Navigate based on role if current path is auth pages
+    const path = u?.role === 'admin' ? '/admin' : '/profile';
+    const from = location.state?.from;
+    navigate(from && from !== '/login' ? from : path, { replace: true });
   };
 
   return (

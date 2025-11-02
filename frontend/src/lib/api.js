@@ -5,6 +5,15 @@ const API_BASE = process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
 export const api = axios.create({ baseURL: API_BASE || undefined, withCredentials: false });
 const authApi = axios.create({ baseURL: API_BASE || undefined, withCredentials: true });
 
+// Helper: logout on backend to clear refresh cookie
+export async function logoutBackend() {
+  try {
+    await authApi.post('/auth/logout');
+  } catch {
+    // ignore
+  }
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("auth_token");
   if (token) {
