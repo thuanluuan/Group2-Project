@@ -5,11 +5,14 @@ import AddUser from "./components/AddUser";
 import ProfileView from "./components/ProfileView";
 import ProfileForm from "./components/ProfileForm";
 import AdminUserList from "./components/AdminUserList";
+import AdminLogViewer from "./components/AdminLogViewer";
 import HoverMenu from "./components/HoverMenu";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import ForgotPasswordLink from "./components/ForgotPasswordLink";
+import ResetPasswordByToken from "./components/ResetPasswordByToken";
 import ChangePasswordAdmin from "./components/ChangePasswordAdmin";
 import AuthHeader from "./components/AuthHeader";
 import { useToast } from "./components/Toast";
@@ -25,10 +28,11 @@ export default function App() {
       return null;
     }
   });
-  const [view, setView] = useState(user ? "app" : "login"); // 'app' | 'login' | 'register' | 'forgot' | 'reset'
+  const [view, setView] = useState(user ? "app" : "login"); // 'app' | 'login' | 'register' | 'forgot' | 'reset' | 'forgot-link' | 'reset-link'
+  const [resetToken, setResetToken] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [selectedUser, setSelectedUser] = useState(null); // for admin viewing others
-  const [mode, setMode] = useState('profile'); // 'profile' | 'profile-edit' | 'change-password'
+  const [mode, setMode] = useState('profile'); // 'profile' | 'profile-edit' | 'change-password' | 'logs'
   const [editTarget, setEditTarget] = useState('self'); // 'self' | 'selected'
   const [listRefreshKey, setListRefreshKey] = useState(0);
 
@@ -52,6 +56,17 @@ export default function App() {
       }
     })();
   }, []);
+
+  // Detect reset token from URL to open reset-by-token view directly
+  useEffect(() => {
+    if (user) return;
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('resetToken') || params.get('token');
+    if (t) {
+      setResetToken(t);
+      setView('reset-link');
+    }
+  }, [user]);
 
   const handleEdit = (u) => setEditUser(u);
   const handleCancelEdit = () => setEditUser(null);
@@ -113,7 +128,8 @@ export default function App() {
                     <div className="card__body"><Login onLoggedIn={handleLoggedIn} onForgot={() => setView('forgot')} /></div>
                     <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
                       <button className="button button--ghost" onClick={() => setView('register')}>Tạo tài khoản</button>
-                      <button className="button button--ghost" onClick={() => setView('forgot')}>Quên mật khẩu</button>
+                      <button className="button button--ghost" onClick={() => setView('forgot')}>Quên mật khẩu (OTP)</button>
+                      <button className="button button--ghost" onClick={() => setView('forgot-link')}>Quên mật khẩu (link)</button>
                     </div>
                   </>
                 ) : view === 'register' ? (
@@ -134,11 +150,32 @@ export default function App() {
                       <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
                     </div>
                   </>
-                ) : (
+                ) : view === 'reset' ? (
                   <>
                     <div className="card__header">Nhập OTP và mật khẩu mới</div>
                     <div className="card__body">
                       <ResetPassword defaultEmail={resetEmail} onDone={() => setView('login')} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
+                    </div>
+                  </>
+                ) : view === 'forgot-link' ? (
+                  <>
+                    <div className="card__header">Quên mật khẩu (nhận link qua email)</div>
+                    <div className="card__body">
+                      <ForgotPasswordLink onRequested={() => { /* stay here, user kiểm tra email */ }} />
+                    </div>
+                    <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                      <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
+                      <button className="button button--ghost" onClick={() => setView('forgot')}>Đổi sang OTP</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="card__header">Đặt lại mật khẩu từ link</div>
+                    <div className="card__body">
+                      <ResetPasswordByToken defaultToken={resetToken} onDone={() => setView('login')} />
                     </div>
                     <div style={{ marginTop: 12 }}>
                       <button className="button button--ghost" onClick={() => setView('login')}>Quay lại đăng nhập</button>
@@ -188,13 +225,19 @@ export default function App() {
                 <div className="grid" style={{ gridTemplateColumns: '1fr' }}>
                   <ChangePasswordAdmin />
                 </div>
+              ) : mode === 'logs' ? (
+                // Separate page: Logs viewer
+                <div className="grid" style={{ gridTemplateColumns: '1fr' }}>
+                  <AdminLogViewer onBack={() => setMode('profile')} />
+                </div>
               ) : (
                 <div className="grid" style={{ gridTemplateColumns: '0.9fr 1.1fr' }}>
                   <div>
                     <div className="card" style={{ marginBottom: 16 }}>
-                      <div className="card__body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div className="card__body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div className="badge">Quản trị</div>
                         <button className="button button--ghost" onClick={() => { setEditTarget('self'); setMode('profile'); }}>Hồ sơ của tôi</button>
+                        <button className="button button--ghost" onClick={() => setMode('logs')}>📊 Logs</button>
                       </div>
                     </div>
                     <AdminUserList
