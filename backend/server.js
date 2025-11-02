@@ -3,15 +3,22 @@ const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const { connectDB } = require("./config/db");
+const cookieParser = require('cookie-parser');
 // Debug log for development configuration
 const DEBUG_RETURN_OTP = String(process.env.DEBUG_RETURN_OTP || "").toLowerCase() === "true";
 console.log(`[cfg] DEBUG_RETURN_OTP=${DEBUG_RETURN_OTP}`);
 
 const app = express();
-app.use(cors());
+// Allow credentials for refresh-token cookies
+app.use(cors({
+  origin: (origin, cb) => cb(null, true),
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use("/", require("./routes/user"));
 app.use("/", require("./routes/auth"));
+app.use("/", require("./routes/logs"));
 // serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // upload endpoints

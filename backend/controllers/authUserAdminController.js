@@ -120,13 +120,28 @@ async function updateAuthUser(req, res) {
       updates.role = role;
     }
 
+    // Fetch current to compare avatarUrl for Cloudinary cleanup
+    const current = await AuthUser.findById(id, { avatarUrl: 1 }).lean();
     const user = await AuthUser.findByIdAndUpdate(id, updates, { new: true, runValidators: true, projection: { password: 0 } });
     if (!user) return res.status(404).json({ message: "Auth user not found" });
+    if (avatarUrl !== undefined && current?.avatarUrl && current.avatarUrl !== user.avatarUrl) {
+      try {
+        const { deleteByUrl } = require('../utils/cloudinaryHelpers');
+        await deleteByUrl(current.avatarUrl);
+      } catch {}
+    }
     res.json(user);
   } catch (e) {
     console.error("updateAuthUser error:", e);
     if (e.code === 11000) return res.status(409).json({ message: "Email đã tồn tại hoặc đã có tài khoản admin" });
-    if (e.name === "CastError") return res.status(400).json({ message: "Invalid id" });
+    if (e.name === "ValidationError") {
+      const first = e?.errors ? Object.values(e.errors)[0] : null;
+      return res.status(400).json({ message: first?.message || "Dữ liệu không hợp lệ" });
+    }
+    if (e.name === "CastError") {
+      if (e.path && e.path !== '_id') return res.status(400).json({ message: `Giá trị trường '${e.path}' không hợp lệ` });
+      return res.status(400).json({ message: "Invalid id" });
+    }
     res.status(500).json({ message: "Failed to update auth user" });
   }
 }
@@ -143,6 +158,13 @@ async function deleteAuthUser(req, res) {
     }
     const user = await AuthUser.findByIdAndDelete(id);
     if (!user) return res.status(404).json({ message: "Auth user not found" });
+    // Best-effort: clean Cloudinary avatar of the deleted user
+    if (toDelete.avatarUrl) {
+      try {
+        const { deleteByUrl } = require('../utils/cloudinaryHelpers');
+        await deleteByUrl(toDelete.avatarUrl);
+      } catch {}
+    }
     res.json({ message: "Auth user deleted" });
   } catch (e) {
     console.error("deleteAuthUser error:", e);
