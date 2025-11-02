@@ -3,6 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const stream = require('stream');
+const sharp = require('sharp');
 const { requireAuth } = require('../middleware/auth');
 const { cloudinary, hasCloudinaryConfig, configureCloudinary } = require('../config/cloudinary');
 
@@ -34,14 +35,22 @@ router.post('/upload/avatar', requireAuth, upload.single('avatar'), async (req, 
   if (!req.file) return res.status(400).json({ message: 'Không có file' });
   try {
     if (useCloud) {
-      // Upload buffer to Cloudinary with a readable stream
+      // Resize/compress before uploading to Cloudinary
+      const maxW = parseInt(process.env.AVATAR_MAX_WIDTH || '512', 10);
+      const maxH = parseInt(process.env.AVATAR_MAX_HEIGHT || '512', 10);
+      const processed = await sharp(req.file.buffer)
+        .rotate() // respect EXIF
+        .resize(maxW, maxH, { fit: 'inside', withoutEnlargement: true })
+        .toFormat('webp', { quality: 85 })
+        .toBuffer();
+      // Upload processed buffer to Cloudinary with a readable stream
       const pass = new stream.PassThrough();
-      pass.end(req.file.buffer);
+      pass.end(processed);
       const folder = process.env.CLOUDINARY_AVATAR_FOLDER || 'avatars';
       const publicId = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { folder, public_id: publicId, resource_type: 'image' },
+          { folder, public_id: publicId, resource_type: 'image', format: 'webp' },
           (err, res) => (err ? reject(err) : resolve(res))
         );
         pass.pipe(uploadStream);
@@ -49,7 +58,19 @@ router.post('/upload/avatar', requireAuth, upload.single('avatar'), async (req, 
       // result.secure_url is globally accessible
       return res.json({ url: result.secure_url, fullUrl: result.secure_url, publicId: result.public_id });
     } else {
-      const rel = `/uploads/avatars/${req.file.filename}`;
+      // Local fallback: process and write a resized/compressed copy
+      const maxW = parseInt(process.env.AVATAR_MAX_WIDTH || '512', 10);
+      const maxH = parseInt(process.env.AVATAR_MAX_HEIGHT || '512', 10);
+      const processedName = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.webp`;
+      const destPath = path.join(uploadDir, processedName);
+      await sharp(req.file.path)
+        .rotate()
+        .resize(maxW, maxH, { fit: 'inside', withoutEnlargement: true })
+        .toFormat('webp', { quality: 85 })
+        .toFile(destPath);
+      // Clean up original file saved by diskStorage
+      try { fs.unlinkSync(req.file.path); } catch {}
+      const rel = `/uploads/avatars/${processedName}`;
       const full = `${req.protocol}://${req.get('host')}${rel}`;
       return res.json({ url: rel, fullUrl: full });
     }
